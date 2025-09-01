@@ -1,0 +1,159 @@
+#HUB RG CREATION
+RG='RG-Network-Hub'
+
+az group create --location eastus -n ${RG}
+
+az network vnet create -g ${RG} -n VNet-Hub --address-prefix 10.44.0.0/16 \
+    --subnet-name Jumpbox-Subnet --subnet-prefix 10.44.40.0/24 -l eastus
+az network vnet subnet create -g ${RG} --vnet-name VNet-Hub -n AzureFirewallSubnet \
+    --address-prefixes 10.44.10.0/24
+az network vnet subnet create -g ${RG} --vnet-name VNet-Hub -n AzureBastionSubnet \
+    --address-prefixes 10.44.20.0/24
+az network vnet subnet create -g ${RG} --vnet-name ${RG}-vNET1 -n GatewaySubnet \
+    --address-prefixes 10.44.30.0/24
+	
+echo "Creating NSG and NSG Rule"
+az network nsg create -g ${RG} -n ${RG}_NSG1
+az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}_NSG1_RULE1 --priority 100 \
+    --source-address-prefixes '*' --source-port-ranges '*' --destination-address-prefixes '*' \
+    --destination-port-ranges '*' --access Allow --protocol Tcp --description "Allowing All Traffic For Now"
+az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}RG-Network-Hub_NSG1_RULE2 --priority 110 \
+    --source-address-prefixes '*' --source-port-ranges '*' --destination-address-prefixes '*' \
+    --destination-port-ranges '*' --access Allow --protocol Icmp --description "Allowing ICMP Traffic For Now"
+
+#Spoke1 RG CREATION
+RG='RG-Network-Spoke1'
+az group create --location eastus -n ${RG}
+
+az network vnet create -g ${RG} -n VNet-Spoke1-Web --address-prefix 172.16.0.0/16 \
+    --subnet-name Web-Subnet --subnet-prefix 172.16.1.0/24 -l eastus
+
+echo "Creating NSG and NSG Rule"
+az network nsg create -g ${RG} -n ${RG}_NSG1
+
+#Allow inbound HTTP (80) & HTTPS (443) from Internet.
+az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}_NSG1_RULE1 --priority 100 \
+    --source-address-prefixes '*' --source-port-ranges '*' --destination-address-prefixes '*' \
+    --destination-port-ranges 80 443 3389 --access Allow --protocol Tcp --description "Allow inbound HTTP (80) & HTTPS (443) from Internet"
+
+#Allow inbound App Tier access on port 8080 (app port).
+az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}_NSG1_RULE2 --priority 110 \
+    --source-address-prefixes '*' --source-port-ranges '*' --destination-address-prefixes '*' \
+    --destination-port-ranges '8080' --access Allow --protocol Tcp --description "Allow inbound App Tier access on port 8080 (app port)"
+
+#Deny all other inbound traffic.
+az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}_NSG1_RULE3 --priority 112 \
+    --source-address-prefixes '*' --source-port-ranges '*' --destination-address-prefixes '*' \
+    --destination-port-ranges '*' --access Deny --protocol '*' --description "Deny all other inbound traffic."
+	
+
+#Spoke2 RG CREATION
+RG='RG-Network-Spoke2'
+az group create --location eastus -n ${RG}
+
+az network vnet create -g ${RG} -n VNet-Spoke2-App --address-prefix 172.17.0.0/16 \
+    --subnet-name App-Subnet --subnet-prefix 172.17.1.0/24 -l eastus
+
+echo "Creating NSG and NSG Rule"
+az network nsg create -g ${RG} -n ${RG}_NSG1
+
+#Allow inbound traffic only from Web Tier Subnet.
+az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}_NSG1_RULE1 --priority 100 \
+    --source-address-prefixes '*' --source-port-ranges '*' --destination-address-prefixes '172.16.0.0/16' \
+    --destination-port-ranges '*' --access Allow --protocol ICMP --description "Allow inbound traffic only from Web Tier Subnet"
+
+#Allow outbound to DB Tier Subnet on port 1433 (SQL).
+az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}_NSG1_RULE2 --priority 110 \
+    --direction outbound --access Allow --protocol Tcp --destination-port-ranges '1433' --destination-address-prefixes '172.18.0.0/16' \
+	--description "Allow outbound to DB Tier Subnet on port 1433 (SQL)."
+
+#Deny all other inbound traffic.
+az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}_NSG1_RULE3 --priority 112 \
+    --source-address-prefixes '*' --source-port-ranges '*' --destination-address-prefixes '*' \
+    --destination-port-ranges '*' --access Deny --protocol '*' --description "Deny all internet access (force via Firewall)."
+	
+
+#Spoke3 RG CREATION
+RG='RG-Network-Spoke3'
+az group create --location eastus -n ${RG}
+
+az network vnet create -g ${RG} -n VNet-Spoke3-DB --address-prefix 172.18.0.0/16 \
+    --subnet-name DB-Subnet --subnet-prefix 172.18.1.0/24 -l eastus
+
+
+echo "Creating NSG and NSG Rule"
+az network nsg create -g ${RG} -n ${RG}_NSG1
+
+#Allow inbound SQL (1433) only from App Tier Subnet.
+az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}_NSG1_RULE1 --priority 100 \
+    --source-address-prefixes '*' --source-port-ranges '*' --destination-address-prefixes '172.17.0.0/16' \
+    --destination-port-ranges '1433' --access Allow --protocol '*' --description "Allow inbound traffic only from App Tier Subnet"
+
+#Deny all other inbound traffic.
+az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}_NSG1_RULE2 --priority 110 \
+    --source-address-prefixes '*' --source-port-ranges '*' --destination-address-prefixes '*' \
+    --destination-port-ranges '*' --access Deny --protocol '*' --description "Deny all inbound from internet."
+
+
+##################################################
+#VNET-PEERINGS
+VNet1Id=$(az network vnet show --resource-group RG-Network-Hub --name VNet-Hub --query id --out tsv)
+VNet2Id=$(az network vnet show --resource-group RG-Network-Spoke1 --name VNet-Spoke1-Web --query id --out tsv)
+VNet3Id=$(az network vnet show --resource-group RG-Network-Spoke2 --name VNet-Spoke2-App --query id --out tsv)
+VNet4Id=$(az network vnet show --resource-group RG-Network-Spoke3 --name VNet-Spoke3-DB --query id --out tsv)
+
+#HUBRG-to-SPOKE1
+az network vnet peering create -g RG-Network-Hub -n HUB-to-SPOKE1 --vnet-name VNet-Hub --remote-vnet $VNet2Id --allow-vnet-access
+az network vnet peering create -g RG-Network-Spoke1 -n SPOKE1-to-HUB --vnet-name VNet-Spoke1-Web --remote-vnet $VNet1Id --allow-vnet-access
+
+#HUBRG-to-SPOKE2
+az network vnet peering create -g RG-Network-Hub -n HUB-to-SPOKE2 --vnet-name VNet-Hub --remote-vnet $VNet3Id --allow-vnet-access
+az network vnet peering create -g RG-Network-Spoke2 -n SPOKE2-to-HUB --vnet-name VNet-Spoke2-App --remote-vnet $VNet1Id --allow-vnet-access
+
+#HUBRG-to-SPOKE3
+az network vnet peering create -g RG-Network-Hub -n HUB-to-SPOKE3 --vnet-name VNet-Hub --remote-vnet $VNet4Id --allow-vnet-access
+az network vnet peering create -g RG-Network-Spoke3 -n SPOKE3-to-HUB --vnet-name VNet-Spoke3-DB --remote-vnet $VNet1Id --allow-vnet-access
+
+##################################################
+#ROUTE TABLES
+az network route-table create -g RG-Network-Spoke1 -n SPOKE1-RT
+az network route-table create -g RG-Network-Spoke2 -n SPOKE2-RT
+az network route-table create -g RG-Network-Spoke3 -n SPOKE3-RT
+
+#ADDING ROUTES
+az network route-table route create -g RG-Network-Spoke1 --route-table-name SPOKE1-RT -n TO-FIREWALL --next-hop-type VirtualAppliance --address-prefix 0.0.0.0/0 --next-hop-ip-address 10.44.10.4
+az network route-table route create -g RG-Network-Spoke2 --route-table-name SPOKE2-RT -n TO-FIREWALL --next-hop-type VirtualAppliance --address-prefix 0.0.0.0/0 --next-hop-ip-address 10.44.10.4
+az network route-table route create -g RG-Network-Spoke3 --route-table-name SPOKE3-RT -n TO-FIREWALL --next-hop-type VirtualAppliance --address-prefix 0.0.0.0/0 --next-hop-ip-address 10.44.10.4
+
+#ADD ROUTE TABLE TO SUBNETS
+az network vnet subnet update --name Web-Subnet --vnet-name VNet-Spoke1-Web --route-table SPOKE1-RT -g RG-Network-Spoke1
+az network vnet subnet update --name App-Subnet --vnet-name VNet-Spoke2-App --route-table SPOKE2-RT -g RG-Network-Spoke2
+az network vnet subnet update --name DB-Subnet --vnet-name VNet-Spoke3-DB --route-table SPOKE3-RT -g RG-Network-Spoke3
+
+
+#VM CREATION
+RG='RG-Network-Hub'
+az vm create --resource-group ${RG} --name JumpboxVM01  --image Win2022Datacenter --vnet-name VNet-Hub \
+    --subnet Jumpbox-Subnet --admin-username adminsree --admin-password "India@123456" --size Standard_B2s \
+    --nsg RG-Network-Hub_NSG1 --storage-sku StandardSSD_LRS --private-ip-address 10.44.40.4 \
+    --zone 3 --os-disk-delete-option Delete --nic-delete-option Delete --security-type Standard
+	
+RG='RG-Network-Spoke1'
+az vm create --resource-group ${RG} --name WebVM01 --image Win2022Datacenter --vnet-name VNet-Spoke1-Web \
+    --subnet Web-Subnet --admin-username adminsree --admin-password "India@123456" --size Standard_B2s \
+    --nsg RG-Network-Spoke1_NSG1 --storage-sku StandardSSD_LRS --private-ip-address 172.16.1.4 \
+    --zone 3 --os-disk-delete-option Delete --nic-delete-option Delete --security-type Standard --public-ip-address ""
+
+RG='RG-Network-Spoke2'
+az vm create --resource-group ${RG} --name AppVM01 --image Win2022Datacenter --vnet-name VNet-Spoke2-App \
+    --subnet App-Subnet --admin-username adminsree --admin-password "India@123456" --size Standard_B2s \
+    --nsg RG-Network-Spoke2_NSG1 --storage-sku StandardSSD_LRS --private-ip-address 172.17.1.4 \
+    --zone 3 --os-disk-delete-option Delete --nic-delete-option Delete --security-type Standard --public-ip-address ""
+	
+RG='RG-Network-Spoke3'	
+
+az vm create --resource-group ${RG} --name DBVM01 --image Win2022Datacenter --vnet-name VNet-Spoke3-DB \
+    --subnet DB-Subnet --admin-username adminsree --admin-password "India@123456" --size Standard_B2s \
+    --nsg RG-Network-Spoke3_NSG1 --storage-sku StandardSSD_LRS --private-ip-address 172.18.1.4 \
+    --zone 3 --os-disk-delete-option Delete --nic-delete-option Delete --security-type Standard --public-ip-address ""
+

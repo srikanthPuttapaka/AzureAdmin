@@ -1,0 +1,125 @@
+create 10.1.0.0/16
+Vnet 
+Subnet-	1 10.1.1.0/24
+
+
+Create two machines 
+	linux 10.1.1.4
+	WIndows10.1.1.5
+
+Azure - disks
+			create two disks 
+				1 for linux 6GB and 1 fo windws 5GB
+
+Attach the disks to VM's
+		go to VM and attach existing disk and apply 
+		do same in for windows VM 
+		
+windows 
+ right click on the Windpws icon disk maangement 
+ open powershell
+ ipconfig 
+ ipconfig /all
+ DNS (if we have to create our own DNS-  by adding ip into network interface at vm  level)
+ Restart the machines
+
+login to windowss machines
+		open powershell and do ipconfig /all
+		install active directory from server manager by addign roles and features 
+		
+Go to WInds serrver and configure DNS by clicking  promote this server to domain controller
+	add anew forest 
+	AZUREB44RG01.com
+	ID Password
+		
+check for active directory installed or not  --> cmd DSA.msc
+ncpa.cpl --> change the network ipv6 disable and check obaitn DNS automatically
+craete a user and see 
+
+login to windows server 
+disk management 
+initialize the both diosk by right click 
+right click on the volume and create
+
+Extend disk size in portaland attach in windows
+\
+Windows 
+go to disk management --> make it offline --> make it offline
+dettach the disk in azure portal from the  Windows VM   
+		
+
+	
+login to linux 
+	lsblk
+	lsblk |grep -i disk
+		
+go to linux and do it 
+lsblk( we will see new disk 5 GB)
+	1.format
+	2.File system
+	3.Mount
+	
+1.format 
+fdisk /dev/sdc
+n new 
+p partition
+w Save
+
+lsblk 
+2.File system
+mkfs.ext4 /dev/sdc1 copy UID and keep aside  76a6da8d-6c09-457e-9318-93016554f731
+mkdir /data
+
+nano /etc/fstab
+add a line liek below
+UID  /data ext4
+
+3.Mount
+df -h
+  mount -a
+ df -h
+  cd /data 
+ wget (install packer url)
+ 
+ ll
+ 
+ (if we need 10 copies )
+ for I in {1..10}
+ do
+ cp paker.zip packer.zip-$I
+ done
+ 
+  ll  
+apt update && apt install -y net-tools jq nginx
+
+Linux : lsblk 
+rescan-scsi-bus.sh
+lsblk |grep -i  disk
+growpart /dev/sdc 1
+lsblk
+resize2fs /dev/sdc1
+df -h 
+
+if we have to delete the disk 
+Delete the line in /etc/fstab
+Umount /data 
+mount -a
+df -h
+dettach in portal from the linuxVM
+
+
+
+
+
+
+
+	
+
+		
+		
+
+	
+				
+ 
+	
+	

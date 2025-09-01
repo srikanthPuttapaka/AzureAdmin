@@ -1,0 +1,22 @@
+RG="AZB44RG"
+LOC="eastus"
+az group create --name $RG --location ${LOC}
+
+az network vnet create --name ${RG}-VNET1 --resource-group $RG \
+    --address-prefixes "10.44.0.0/16" --subnet-name ${RG}-Subnet-1 \
+    --subnet-prefixes "10.44.1.0/24"
+
+az network nsg create -g $RG -n ${RG}-NSG1
+
+az network nsg rule create -g $RG --nsg-name ${RG}-NSG1 \
+    -n ${RG}-NSG1-AllowAllTraffic --priority 100 \
+    --source-address-prefixes '*' --source-port-ranges '*' \
+    --destination-address-prefixes '*' --destination-port-ranges '*' \
+    --access Allow --protocol '*' --description "AllowAllTrafficRule"
+
+IMAGE='Canonical:0001-com-ubuntu-server-focal-daily:20_04-daily-lts-gen2:latest'
+
+az vm create --resource-group ${RG} --name LINXSVR01 --image $IMAGE --vnet-name ${RG}-VNET1 \
+    --subnet ${RG}-Subnet-1 --admin-username adminsree --admin-password "India@123456" --size Standard_B1s \
+    --storage-sku StandardSSD_LRS --nic-delete-option Delete --zone 3 --os-disk-delete-option Delete \
+    --private-ip-address 10.44.1.5 --nsg ${RG}-NSG1 --security-type Standard

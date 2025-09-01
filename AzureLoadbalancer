@@ -1,0 +1,33 @@
+RG='AZB44-HUB-RG'
+
+az group create --location eastus -n ${RG}
+
+az network vnet create -g ${RG} -n ${RG}-vNET1  --address-prefix 10.44.0.0/16 \
+    --subnet-name Subnet-1 --subnet-prefix 10.44.1.0/24 -l eastus
+
+IMAGE='Canonical:0001-com-ubuntu-server-focal-daily:20_04-daily-lts-gen2:latest'
+
+echo "Creating Virtual Machine1"
+az vm create --resource-group ${RG} --name Webservr1 --image $IMAGE --vnet-name ${RG}-vNET1 \
+    --subnet Subnet-1 --admin-username adminsree --admin-password "India@123456" --size Standard_B1s \
+    --nsg ${RG}_NSG1 --storage-sku StandardSSD_LRS --private-ip-address 10.44.1.5 \
+    --zone 1 --os-disk-delete-option Delete --nic-delete-option Delete
+
+echo "Creating Virtual Machine2"
+az vm create --resource-group ${RG} --name Webservr2 --image $IMAGE --vnet-name ${RG}-vNET1 \
+    --subnet Subnet-1 --admin-username adminsree --admin-password "India@123456" --size Standard_B1s \
+    --nsg ${RG}_NSG1 --storage-sku StandardSSD_LRS --private-ip-address 10.44.1.6 \
+    --zone 1 --os-disk-delete-option Delete --nic-delete-option Delete
+
+    echo "Creating Virtual Machine3"
+az vm create --resource-group ${RG} --name Webservr3--image $IMAGE --vnet-name ${RG}-vNET1 \
+    --subnet Subnet-1 --admin-username adminsree --admin-password "India@123456" --size Standard_B1s \
+    --nsg ${RG}_NSG1 --storage-sku StandardSSD_LRS --private-ip-address 10.44.1.7 \
+    --zone 1 --os-disk-delete-option Delete --nic-delete-option Delete
+
+echo "Creating Virtual Machine4"
+az vm create --resource-group ${RG} --name Webservr4 --image $IMAGE --vnet-name ${RG}-vNET1 \
+    --subnet Subnet-1 --admin-username adminsree --admin-password "India@123456" --size Standard_B1s \
+    --nsg ${RG}_NSG1 --storage-sku StandardSSD_LRS --private-ip-address 10.44.1.8 \
+    --zone 1 --os-disk-delete-option Delete --nic-delete-option Delete
+
