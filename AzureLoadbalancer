@@ -5,7 +5,7 @@ az group create --location eastus -n ${RG}
 az network vnet create -g ${RG} -n ${RG}-vNET1  --address-prefix 10.44.0.0/16 \
     --subnet-name Subnet-1 --subnet-prefix 10.44.1.0/24 -l eastus
 
-echo "Creating NSG and NSG Rule"
+echo "Creating NSG and NSG Rule1"
 az network nsg create -g ${RG} -n ${RG}_NSG1
 az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}_NSG1_RULE1 --priority 100 \
     --source-address-prefixes '*' --source-port-ranges '*' --destination-address-prefixes '*' \
