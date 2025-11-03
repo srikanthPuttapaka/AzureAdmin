@@ -1,0 +1,61 @@
+RG='AZB44APPGW'
+
+az group create --location eastus -n ${RG}
+
+az network vnet create -g ${RG} -n ${RG}-vNET1  --address-prefix 10.1.0.0/16 \
+    --subnet-name ${RG}-Subnet-1 --subnet-prefix 10.1.1.0/24 -l eastus
+
+az network vnet subnet create -g ${RG} --vnet-name ${RG}-vNET1 -n ${RG}-Subnet-AppGW \
+    --address-prefixes 10.1.2.0/24
+
+
+echo "Creating NSG and NSG Rule"
+az network nsg create -g ${RG} -n ${RG}_NSG1
+az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}_NSG1_RULE1 --priority 100 \
+    --source-address-prefixes '*' --source-port-ranges '*' --destination-address-prefixes '*' \
+    --destination-port-ranges '*' --access Allow --protocol Tcp --description "Allowing All Traffic For Now"
+az network nsg rule create -g ${RG} --nsg-name ${RG}_NSG1 -n ${RG}_NSG1_RULE2 --priority 101 \
+    --source-address-prefixes '*' --source-port-ranges '*' --destination-address-prefixes '*' \
+    --destination-port-ranges '*' --access Allow --protocol Icmp --description "Allowing ICMP Traffic For Now"
+
+
+IMAGE='Canonical:0001-com-ubuntu-server-focal-daily:20_04-daily-lts-gen2:latest'
+echo "Creating Virtual Machine1"
+az vm create --resource-group ${RG} --name HOMEPAGE1 --image $IMAGE --vnet-name ${RG}-vNET1 \
+    --subnet ${RG}-Subnet-1 --admin-username adminsree --admin-password "India@123456" --size Standard_B1s \
+    --nsg ${RG}_NSG1 --storage-sku StandardSSD_LRS --private-ip-address 10.1.1.100 \
+    --zone 3 --os-disk-delete-option Delete --nic-delete-option Delete
+
+IMAGE='Canonical:0001-com-ubuntu-server-focal-daily:20_04-daily-lts-gen2:latest'
+echo "Creating Virtual Machine2"
+az vm create --resource-group ${RG} --name HOMEPAGE2 --image $IMAGE --vnet-name ${RG}-vNET1 \
+    --subnet ${RG}-Subnet-1 --admin-username adminsree --admin-password "India@123456" --size Standard_B1s \
+    --nsg ${RG}_NSG1 --storage-sku StandardSSD_LRS --private-ip-address 10.1.1.101 \
+    --zone 3 --os-disk-delete-option Delete --nic-delete-option Delete
+
+IMAGE='Canonical:0001-com-ubuntu-server-focal-daily:20_04-daily-lts-gen2:latest'
+echo "Creating Virtual Machine3"
+az vm create --resource-group ${RG} --name Movies --image $IMAGE --vnet-name ${RG}-vNET1 \
+    --subnet ${RG}-Subnet-1 --admin-username adminsree --admin-password "India@123456" --size Standard_B1s \
+    --nsg ${RG}_NSG1 --storage-sku StandardSSD_LRS --private-ip-address 10.1.1.102 \
+    --zone 3 --os-disk-delete-option Delete --nic-delete-option Delete
+
+IMAGE='Canonical:0001-com-ubuntu-server-focal-daily:20_04-daily-lts-gen2:latest'
+echo "Creating Virtual Machine4"
+az vm create --resource-group ${RG} --name Shows --image $IMAGE --vnet-name ${RG}-vNET1 \
+    --subnet ${RG}-Subnet-1 --admin-username adminsree --admin-password "India@123456" --size Standard_B1s \
+    --nsg ${RG}_NSG1 --storage-sku StandardSSD_LRS --private-ip-address 10.1.1.103 \
+    --zone 3 --os-disk-delete-option Delete --nic-delete-option Delete
+
+#login to all servers and follow below 
+#sudo su -
+#apt update && apt install -y nginx net-tools jq
+#nano /var/www/html/index.nginx-debian.html (change the header in the file with server name for all servers)
+
+#create and deploy application gateway load balancer
+#configure DNS(public Ip address of load balancer)
+    #add recordset Naked doamin 
+    #add record set  for www
+#create keyvault
+#create manage identity
+#give access to application gateway load balancer
